@@ -13,3 +13,15 @@ import imaplib
 import random
 import time
 import xoauth
+import yaml
+
+# Configuration and static variables
+def open_yaml(f):
+    return open(os.path.join(os.path.dirname(os.path.realpath(__file__)), f))
+try:
+    config = yaml.load(open_yaml('config.yaml'))
+except IOError:
+    print "config.yaml missing-- no configuration file found (see config.example.yaml for a sample configuration.)"
+    sys.exit()
+
+
