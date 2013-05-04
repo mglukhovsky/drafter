@@ -1,0 +1,7 @@
+--- # Drafter configuration
+# Turn verbose logging on or off
+logging: false
+# Gmail details
+email: youremail@gmail.com
+token: oauth_gmail_token
+secret: oauth_gmail_secret
