@@ -13,6 +13,7 @@ import imaplib
 import random
 import time
 import xoauth
+import os
 import yaml
 
 # Configuration and static variables
@@ -24,4 +25,28 @@ except IOError:
     print "config.yaml missing-- no configuration file found (see config.example.yaml for a sample configuration.)"
     sys.exit()
 
+# Construct the OAuth access token
+nonce = str(random.randrange(2**64 - 1))
+timestamp = str(int(time.time()))
+consumer = xoauth.OAuthEntity('anonymous', 'anonymous')
+access = xoauth.OAuthEntity(config['token'], config['secret'])
+token = xoauth.GenerateXOauthString(
+    consumer, access, config['email'], 'imap', config['email'], nonce, timestamp)
 
+# Connect to Gmail's IMAP service
+imap = imaplib.IMAP4_SSL('imap.googlemail.com')
+imap.debug = 4
+imap.authenticate('XOAUTH', lambda x: token)
+
+# Create the message
+msg = email.message.Message()
+msg['Subject'] = 'subject of the message'
+msg['From'] = config['email']
+msg['To'] = config['email']
+msg.set_payload('Body of the message')
+
+# Add the message to Gmail's drafts folder
+now = imaplib.Time2Internaldate(time.time())
+imap.append('[Gmail]/Drafts', '', now, str(msg))
+
+imap.logout()
