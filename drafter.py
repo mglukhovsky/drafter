@@ -9,12 +9,12 @@ Drafter builds Gmail drafts for you programmatically.
 """
 
 import email.message
-import imaplib
 import random
 import time
-import xoauth
 import os
 import yaml
+import oauth2 as oauth
+import oauth2.clients.imap as imaplib
 
 # Configuration and static variables
 def open_yaml(f):
@@ -25,18 +25,16 @@ except IOError:
     print "config.yaml missing-- no configuration file found (see config.example.yaml for a sample configuration.)"
     sys.exit()
 
-# Construct the OAuth access token
-nonce = str(random.randrange(2**64 - 1))
-timestamp = str(int(time.time()))
-consumer = xoauth.OAuthEntity('anonymous', 'anonymous')
-access = xoauth.OAuthEntity(config['token'], config['secret'])
-token = xoauth.GenerateXOauthString(
-    consumer, access, config['email'], 'imap', config['email'], nonce, timestamp)
+# Set up a three-legged OAuth request
+consumer = oauth.Consumer('anonymous','anonymous')
+token = oauth.Token(config['token'], config['secret'])
+url = "https://mail.google.com/mail/b/%s/imap/" % config['email'] # URL for Google's XOAUTH
 
 # Connect to Gmail's IMAP service
-imap = imaplib.IMAP4_SSL('imap.googlemail.com')
-imap.debug = 4
-imap.authenticate('XOAUTH', lambda x: token)
+conn = imaplib.IMAP4_SSL('imap.googlemail.com')
+conn.debug = 4
+conn.authenticate(url, consumer, token)
+imap = imaplib.imaplib
 
 # Create the message
 msg = email.message.Message()
@@ -46,7 +44,7 @@ msg['To'] = config['email']
 msg.set_payload('Body of the message')
 
 # Add the message to Gmail's drafts folder
-now = imaplib.Time2Internaldate(time.time())
-imap.append('[Gmail]/Drafts', '', now, str(msg))
+now = imap.Time2Internaldate(time.time())
+conn.append('[Gmail]/Drafts', '', now, str(msg))
 
-imap.logout()
+conn.logout()
