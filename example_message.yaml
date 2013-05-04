@@ -1,0 +1,14 @@
+--- # Example message template for Drafter
+from: george.bluth.sr@bluthcompany.com
+to: '{{recipient}}'
+#cc: <not included in this email example, but possible>
+bcc: michael.bluth@bluthcompany.com
+subject: "{{first_name}}, there's always money in the banana stand!"
+message: |
+    Hey {{first_name}} {{last_name}},
+    <p>I thought I'd tell you this first since you're my favorite
+    {{relationship}}. Just remember-- there's always money in the banana stand! ;)
+    (if you've forgotten where it is, <a
+    href="https://maps.google.com/maps?q=fisherman's+village+marina+del+rey&aq=f&um=1&ie=UTF-8&hl=en&sa=N&tab=wl&authuser=0">here's
+    a link to it on Google Maps</a>).</p>
+    <p>- George Bluth Sr.</p>
