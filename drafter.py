@@ -1,25 +1,27 @@
 #!/usr/bin/env python
 """
-Drafter builds Gmail drafts for you programmatically.
-    - inspired by previous work by @samplebias on Stack Overflow and @jsha (Jacob Hoffman-Andrews)
+Drafter is command-line mail merge: it builds Gmail drafts for you programmatically.
+    - Drafter takes a CSV file with headers and a Mustache template and saves a set of drafts in your Gmail account
+    - inspired by work of @samplebias on Stack Overflow and @jsha (Jacob Hoffman-Andrews)
         * http://stackoverflow.com/questions/5355067/programatically-save-draft-in-gmail-drafts-folder
         * https://jacob.hoffman-andrews.com/README/index.php/2012/03/27/easy-custom-mail-merge-with-python-and-gmail/
     - read README for setup and usage details
-    - Drafter takes a CSV file with headers and a Mustache template and saves a set of drafts in your Gmail account
 """
 
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 import random
 import time
 import os, sys
-import yaml
+import argparse
+import re
 import oauth2 as oauth
 import oauth2.clients.imap as imaplib
-import argparse
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 import csv
+import markdown
 import pystache
-import re
+import yaml
+from premailer import transform
 
 # Elegant solution for a CSV parser that supports encodings, taken from http://stackoverflow.com/questions/5478659/python-module-like-csv-dictreader-with-full-utf8-support
 def UnicodeDictReader(str_data, encoding, **kwargs):
@@ -38,7 +40,7 @@ parser.add_argument('-t', '--template', help='Mustache template for email that w
 parser.add_argument('-d', '--csv-data', help='CSV data file with headers for the template (see example_data.csv for an example)', required=True)
 args = parser.parse_args()
 
-# Configuration and static variables
+# Read in and process the configuration
 def open_yaml(f):
     return open(os.path.join(os.path.dirname(os.path.realpath(__file__)), f))
 try:
@@ -47,8 +49,64 @@ except IOError:
     print "config.yaml missing-- no configuration file found (see config.example.yaml for a sample configuration.)"
     sys.exit()
 
+# Read in and process the YAML / Markdown / Mustache template. This whole approach is messy and bad but works
 try:
-    template = yaml.load(open_yaml(args.template))
+    f = open_yaml(args.template)
+    template_raw = f.readlines()
+
+    yaml_front_matter = ''
+    message_template = ''
+
+    reading_yaml_fm = False
+    reading_document = False
+    trimmed_leading_whitespace = False
+
+    for line in template_raw:
+        if not reading_document:
+            # Skip blank lines
+            if not line.strip():
+                continue
+
+            # If we're already reading in the YAML front matter...
+            if reading_yaml_fm:
+                # Check if we've hit the closing tag for the YAML front matter
+                if line.rstrip().startswith('---'):
+                    reading_yaml_fm = False
+                else:
+                    # This line is YAML, so keep it
+                    yaml_front_matter += line
+                continue
+
+            # Look for an opening tag for the YAML front matter
+            if line.rstrip().startswith('---'):
+                reading_yaml_fm = True
+                continue
+            # If it's not at the start of the file, we're now reading the document
+            else:
+                reading_document = True
+
+        else:
+            # Skip leading blank lines between YAML front matter and the document, if they exist
+            if not trimmed_leading_whitespace and not line.strip():
+                continue
+            trimmed_leading_whitespace = True
+            # This line is the message, so keep it
+            message_template += line
+
+    template = {}
+    if len(yaml_front_matter) > 0:
+        template.update(yaml.load(yaml_front_matter))
+    
+    # We're adding a custom style (embedded inline with Premailer) so that the first paragraph doesn't have a leading margin-top
+    template['message'] = transform("""
+        <html>
+            <style type="text/css">
+                p:first-child { margin-top: 0; }
+            </style>
+            %s
+        </html>
+    """ % markdown.markdown(message_template))
+
 except IOError:
     print "Could not read the specified template: %s" % args.template
     sys.exit()
@@ -72,7 +130,6 @@ def send_message(conn, template_data):
     # We have to attach the body of the message as both text/plain and
     # text/html, and attach each part to the message container
     body = pystache.render(template['message'], d)
-    print body
     plain_part = MIMEText(re.sub('<[^<]+?>', '', body), 'plain', 'utf-8')
     html_part = MIMEText(body, 'html', 'utf-8')
 
