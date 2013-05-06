@@ -85,11 +85,7 @@ try:
             else:
                 reading_document = True
 
-        else:
-            # Skip leading blank lines between YAML front matter and the document, if they exist
-            if not trimmed_leading_whitespace and not line.strip():
-                continue
-            trimmed_leading_whitespace = True
+        if reading_document:
             # This line is the message, so keep it
             message_template += line
 
