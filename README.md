@@ -31,6 +31,8 @@ and just run:
 python drafter.py --template /path/to/template.markdown --csv-data /path/to/data.csv
 ```
 
+Drafter will then log in to your Gmail accout and create a set of drafts based
+on your template and CSV data.
 
 ## Drafter setup
 Start by installing the required libraries:
