@@ -1,7 +1,6 @@
 oauth2
 pyyaml
 argparse
-csv
 pystache
 markdown
 premailer
