@@ -1,4 +1,4 @@
-#Drafter
+# Drafter
 
 Drafter does command-line mail merge-- it programmatically generates Gmail
 drafts for you, complete with subject
